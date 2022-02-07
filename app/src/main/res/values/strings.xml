@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">AudioRecordApp</string>
+    <string name="timer_text">00:00</string>
+    <string name="cancel_recording">Cancel recording</string>
+    <string name="my_first_record_text">My first record</string>
+    <string name="save_recording_text">Save recording?</string>
+    <string name="_12_text">12</string>
+    <string name="please_accept_the_permissions_text">Please accept the permissions</string>
+    <string name="please_rename_your_new_record_text">Please rename your new record</string>
+</resources>
