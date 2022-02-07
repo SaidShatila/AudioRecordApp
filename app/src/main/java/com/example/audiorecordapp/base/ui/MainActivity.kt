@@ -13,7 +13,6 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.example.audiorecordapp.R
@@ -48,6 +47,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
     private var isRecordingMedia = false
     private var isPlayingMedia = false
     private var isPaused = false
+    private var isStopped = true
 
     //To check the position of the audio if paused
     private var pausePos = 0f
@@ -57,15 +57,20 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
     private var permissionIfStorageAccepted = false
     private var permissionIfAudioRecordAccepted = false
 
+    private lateinit var appSpecificExternalDir: File
+
+
     private var isCanceled = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-
+        appSpecificExternalDir = File("${externalCacheDir?.absolutePath}${File.separator}/")
         onClickListener()
         permissionViews()
+        initRecyclerView()
 //        setUpRecycler()
     }
+
 
     //TODO handle a folder where files are created and we can add files upon recording and finishing record
     private fun initMedia() {
@@ -99,6 +104,32 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         }
     }
 
+    private fun initRecyclerView() {
+        with(binding) {
+            if (getAudioLists(appSpecificExternalDir).isNotEmpty()) {
+                setUpRecycler(getAudioLists(appSpecificExternalDir))
+                ViewVisibility.viewShow(rvAudioList)
+            } else ViewVisibility.viewHide(rvAudioList)
+        }
+    }
+
+    private fun getAudioLists(file: File): ArrayList<AudioRecordObject> {
+        val audioList: ArrayList<AudioRecordObject> = arrayListOf()
+        val listAllFiles = file.listFiles()
+        if (listAllFiles != null && listAllFiles.isNotEmpty()) {
+            for (currentFile in listAllFiles) {
+                audioList.add(
+                    AudioRecordObject(
+                        null,
+                        currentFile.name,
+                        currentFile.path.toString(), "00:25", isPlaying = false, isStopped = true
+                    )
+                )
+            }
+        }
+        return audioList
+    }
+
     private fun onClickListener() {
         with(binding) {
             btPermission.setOnClickListener {
@@ -117,19 +148,31 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
     }
 
     private fun setUpRecycler(audioRecordObjectList: ArrayList<AudioRecordObject>) {
-        audioRecordAdapter = AudioRecordAdapter { adapter ->
+        ViewVisibility.viewShow(binding.rvAudioList)
+        audioRecordAdapter = AudioRecordAdapter({ adapter ->
             audioRecordAdapter.getAudioRecord()[adapter].isPlaying =
                 !audioRecordAdapter.getAudioRecord()[adapter].isPlaying
             if (audioRecordAdapter.getAudioRecord()[adapter].isPlaying && !isPlayingMedia && !isPaused)
                 startPlaying(audioRecordAdapter.getAudioRecord()[adapter].audioPath)
-            else if (isPlayingMedia && !audioRecordAdapter.getAudioRecord()[adapter].isPlaying && !isPaused)
+            else if (isPlayingMedia && !audioRecordAdapter.getAudioRecord()[adapter].isPlaying && !isPaused) {
+                audioRecordAdapter.getAudioRecord()[adapter].isStopped = false
                 pausePlaying()
-            else if (!isPlayingMedia && audioRecordAdapter.getAudioRecord()[adapter].isPlaying && isPaused)
+            } else if (!isPlayingMedia && audioRecordAdapter.getAudioRecord()[adapter].isPlaying && isPaused) {
+                audioRecordAdapter.getAudioRecord()[adapter].isStopped = false
                 resumePlaying()
-            else
+            } else if (isStopped) {
+                audioRecordAdapter.getAudioRecord()[adapter].isPlaying = false
+                audioRecordAdapter.getAudioRecord()[adapter].isStopped = true
                 stopPlaying()
+            }
             audioRecordAdapter.notifyItemChanged(adapter)
-        }
+        }, { adapter ->
+            val fileDelete =
+                File(audioRecordAdapter.getAudioRecord()[adapter].audioPath)
+            fileDelete.delete()
+            Log.d("MainActivityThis", "recording Deleted ${fileDelete.absolutePath}")
+        })
+        audioRecordAdapter.notifyDataSetChanged()
         binding.rvAudioList.adapter = audioRecordAdapter
         audioRecordAdapter.setAudioList(audioRecordObjectList)
     }
@@ -235,6 +278,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
                     prepare()
                     start()
                 }
+                isStopped = false
                 isPlayingMedia = true
                 Log.d("MainActivityThis", "playback started with MediaPlayer")
             } catch (e: IOException) {
@@ -262,6 +306,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         if (mediaPlayer != null) {
             mediaPlayer?.release()
             mediaPlayer = null
+            isStopped = true
             isPlayingMedia = false
             isPaused = false
         }
@@ -378,11 +423,16 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
                     it,
                     "$dirPathMain$it.m4a",
                     "00:25",
-                    false
+                    isPlaying = false,
+                    isStopped = true
                 )
                 Log.d("MainActivityThis", "recording Saved ${newFile.absolutePath}")
-                listOfRecords.add(newAudio)
-                setUpRecycler(listOfRecords)
+                if (getAudioLists(appSpecificExternalDir).size <= 1) {
+                    listOfRecords.add(newAudio)
+                    setUpRecycler(listOfRecords)
+                } else if (getAudioLists(appSpecificExternalDir).size > 1) audioRecordAdapter.addToList(
+                    newAudio
+                )
             }
             ) {
                 val fileDelete = File("$dirPathMain$fileNameMedia")

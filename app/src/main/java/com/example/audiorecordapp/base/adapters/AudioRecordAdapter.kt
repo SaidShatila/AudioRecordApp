@@ -9,12 +9,13 @@ import com.example.audiorecordapp.base.models.local.AudioRecordObject
 import com.example.audiorecordapp.databinding.ItemPlayAudioBinding
 
 class AudioRecordAdapter(
-    private val onPlayPausedClicked: (Int) -> Unit
+    private val onPlayPausedClicked: (Int) -> Unit,
+    private val onDelete: (Int) -> Unit
 ) : RecyclerView.Adapter<AudioRecordAdapter.AudioListViewHolder>() {
-    private var recordList: List<AudioRecordObject> = emptyList()
+    private var recordList: ArrayList<AudioRecordObject> = arrayListOf()
 
     @SuppressLint("NotifyDataSetChanged")
-    fun setAudioList(audioList: List<AudioRecordObject>) {
+    fun setAudioList(audioList: ArrayList<AudioRecordObject>) {
         this.recordList = audioList
         notifyDataSetChanged()
     }
@@ -33,13 +34,17 @@ class AudioRecordAdapter(
         holder.binding.btPlay.setOnClickListener {
             onPlayPausedClicked(position)
         }
+        holder.binding.btDelete.setOnClickListener {
+            onDelete(position)
+            recordList.removeAt(position)
+            notifyItemRemoved(position)
+        }
     }
 
     override fun getItemCount(): Int = recordList.size
 
     class AudioListViewHolder(val binding: ItemPlayAudioBinding) :
         RecyclerView.ViewHolder(binding.root) {
-
         fun bind(audioListObject: AudioRecordObject) {
             with(binding) {
                 val audioName = audioListObject.audioName.split(".m4a")[0]
@@ -47,10 +52,21 @@ class AudioRecordAdapter(
                 tvTime.text = audioListObject.audioDuration
                 if (audioListObject.isPlaying) {
                     btPlay.setIconResource(R.drawable.ic_baseline_pause_24)
-                } else if(!audioListObject.isPlaying){
+                } else if (!audioListObject.isPlaying || audioListObject.isStopped) {
                     btPlay.setIconResource(R.drawable.ic_baseline_play_arrow_24)
                 }
             }
         }
+    }
+
+    /* @SuppressLint("NotifyDataSetChanged")
+     fun removeFromList(position: Int) {
+         recordList.removeAt(position)
+         notifyDataSetChanged()
+     }*/
+
+    fun addToList(audioListObject: AudioRecordObject) {
+        recordList.add(audioListObject)
+        notifyDataSetChanged()
     }
 }

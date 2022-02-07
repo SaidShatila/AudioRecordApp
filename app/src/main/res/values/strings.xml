@@ -7,4 +7,5 @@
     <string name="_12_text">12</string>
     <string name="please_accept_the_permissions_text">Please accept the permissions</string>
     <string name="please_rename_your_new_record_text">Please rename your new record</string>
+    <string name="no_audio_s_available_text">No Audio\'s Available</string>
 </resources>
