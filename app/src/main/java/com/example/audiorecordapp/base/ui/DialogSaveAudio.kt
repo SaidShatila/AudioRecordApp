@@ -12,8 +12,9 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import com.example.audiorecordapp.databinding.DialogSaveAudioBinding
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.HiltAndroidApp
 import java.io.File
-
 class DialogSaveAudio(
     private val filename: String,
     val onSave: (fileName: String) -> Unit?,
@@ -58,7 +59,7 @@ class DialogSaveAudio(
                     p2: Int,
                     p3: Int
                 ) {
-
+//                    binding.filenameInput.text.clear()
                 }
 
                 override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {

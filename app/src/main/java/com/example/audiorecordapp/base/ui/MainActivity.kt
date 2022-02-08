@@ -9,15 +9,19 @@ import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.hilt.work.HiltWorker
+import androidx.lifecycle.lifecycleScope
 import com.example.audiorecordapp.R
 import com.example.audiorecordapp.base.adapters.AudioRecordAdapter
-import com.example.audiorecordapp.base.models.local.AudioRecordObject
+import com.example.audiorecordapp.base.models.local.models.AudioRecordObject
 import com.example.audiorecordapp.base.utils.Animator
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_READ_EXTERNAL_STORAGE_DOWNLOAD
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_RECORD_AUDIO
@@ -25,15 +29,23 @@ import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_REC_AUDIO_A
 import com.example.audiorecordapp.base.utils.ConstantsUtils.TOUCH_TOLERANCE
 import com.example.audiorecordapp.base.utils.ConstantsUtils.bitRate
 import com.example.audiorecordapp.base.utils.ConstantsUtils.sampleRate
+import com.example.audiorecordapp.base.utils.Timer
 import com.example.audiorecordapp.base.utils.ViewVisibility
+import com.example.audiorecordapp.base.viewmodel.ActivityViewModel
 import com.example.audiorecordapp.databinding.ActivityMainBinding
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
-
-
-class MainActivity : AppCompatActivity(), View.OnTouchListener {
+@AndroidEntryPoint
+class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpdateListener {
     private lateinit var binding: ActivityMainBinding
 
+    private val activityViewModel: ActivityViewModel by viewModels()
     lateinit var audioRecordAdapter: AudioRecordAdapter
     private var mediaRecorder: MediaRecorder? = null
     private var mediaPlayer: MediaPlayer? = null
@@ -59,8 +71,13 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
 
     private lateinit var appSpecificExternalDir: File
 
-
     private var isCanceled = false
+
+    private lateinit var timer: Timer
+    private lateinit var handler: Handler
+
+    private var recording = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
@@ -68,6 +85,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         onClickListener()
         permissionViews()
         initRecyclerView()
+
 //        setUpRecycler()
     }
 
@@ -118,13 +136,18 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         val listAllFiles = file.listFiles()
         if (listAllFiles != null && listAllFiles.isNotEmpty()) {
             for (currentFile in listAllFiles) {
-                audioList.add(
-                    AudioRecordObject(
-                        null,
-                        currentFile.name,
-                        currentFile.path.toString(), "00:25", isPlaying = false, isStopped = true
+                lifecycleScope.launch {
+                    audioList.add(
+                        AudioRecordObject(
+                            null,
+                            currentFile.name,
+                            currentFile.path.toString(),
+                            activityViewModel.getAudioTime().toString(),
+                            isPlaying = false,
+                            isStopped = true
+                        )
                     )
-                )
+                }
             }
         }
         return audioList
@@ -191,6 +214,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         binding.btRecord.isEnabled = true
     }
 
+    @SuppressLint("SimpleDateFormat")
     private fun startRecording(id: Int) {
         if (id == binding.btRecord.id) {
             initMedia()
@@ -240,6 +264,9 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
                     Log.e("MainActivityThis", "could not prepare MediaRecorder $e")
                     return
                 }
+                timer = Timer(this)
+                timer.start()
+                recording = true
                 mediaRecorder?.start()
                 Log.d("MainActivityThis", "recording started with MediaRecorder")
             }
@@ -249,11 +276,21 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
     private fun stopRecording(btRecord: Int?, btCancel: Int?) {
         if (btRecord == binding.btRecord.id || btCancel == binding.btCancel.id) {
             if (mediaRecorder != null) {
+                try {
+                    timer.stop()
+                    recording = false
+                } catch (e: java.lang.Exception) {
+                    Log.d("MainActivityThis", "Timer Error")
+                }
                 mediaRecorder?.stop()
                 mediaRecorder?.reset()
                 mediaRecorder?.release()
                 Log.d("MainActivityThis", "recording Stopped")
                 mediaRecorder = null
+                with(binding) {
+                    progressBar.progress = 0
+                    tvTimer.text = "00:00"
+                }
             }
         }
     }
@@ -325,6 +362,12 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
     private fun cancelRecording() {
         if (mediaRecorder != null) {
             try {
+                try {
+                    timer.stop()
+                    recording = false
+                } catch (e: java.lang.Exception) {
+                    Log.d("MainActivityThis", "Timer Error")
+                }
                 mediaRecorder?.stop()
                 mediaRecorder?.reset()
                 val file = File("$dirPathMain$fileNameMedia")
@@ -338,6 +381,10 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
                     Toast.LENGTH_SHORT
                 ).show()
                 Log.e("MainActivityThis", "illegal argument given $e")
+            }
+            with(binding) {
+                progressBar.progress = 0
+                tvTimer.text = "00:00"
             }
         }
     }
@@ -407,6 +454,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         return true
     }
 
+
     private fun showSaveDialog(
         fileName: String,
     ) {
@@ -422,10 +470,13 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
                     id,
                     it,
                     "$dirPathMain$it.m4a",
-                    "00:25",
+                    timer.format(),
                     isPlaying = false,
                     isStopped = true
                 )
+                lifecycleScope.launch {
+                    activityViewModel.saveAudioTime(timer.format())
+                }
                 Log.d("MainActivityThis", "recording Saved ${newFile.absolutePath}")
                 if (getAudioLists(appSpecificExternalDir).size <= 1) {
                     listOfRecords.add(newAudio)
@@ -501,6 +552,30 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         }
         Log.d("height", result.toString())
         return result
+    }
+
+    override fun onTimerUpdate(duration: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            launch(Dispatchers.Main) {
+                if (recording)
+                    with(binding) {
+                        tvTimer.text = duration
+                        progressBar.progress = timer.getDuration().toInt() / 300
+                    }
+
+                if (duration == "05:00") {
+                    try {
+                        stopRecording(binding.btRecord.id, null)
+                        showSaveDialog(fileNameMedia)
+                        isRecordingMedia = false
+                    } catch (e: Exception) {
+                        Log.e("MainActivityThis", "onManyClicks $e")
+                        mediaRecorder = null
+                    }
+                }
+            }
+        }
+
     }
 
 }

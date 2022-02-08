@@ -1,4 +1,4 @@
-package com.example.audiorecordapp.base.models.local
+package com.example.audiorecordapp.base.models.local.models
 
 data class AudioRecordObject(
     var audioId: Int?,

@@ -5,7 +5,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.audiorecordapp.R
-import com.example.audiorecordapp.base.models.local.AudioRecordObject
+import com.example.audiorecordapp.base.models.local.models.AudioRecordObject
 import com.example.audiorecordapp.databinding.ItemPlayAudioBinding
 
 class AudioRecordAdapter(
