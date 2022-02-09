@@ -18,6 +18,7 @@ import javax.inject.Singleton
 
 private const val STORE_NAME = "audio_record_data_store"
 val Context.dataStoreAudio: DataStore<Preferences> by preferencesDataStore(STORE_NAME)
+
 @Singleton
 class PrefsStoreImpl@Inject constructor(
     @ApplicationContext context: Context

@@ -17,11 +17,11 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import androidx.hilt.work.HiltWorker
 import androidx.lifecycle.lifecycleScope
 import com.example.audiorecordapp.R
 import com.example.audiorecordapp.base.adapters.AudioRecordAdapter
 import com.example.audiorecordapp.base.models.local.models.AudioRecordObject
+import com.example.audiorecordapp.base.models.local.prefstore.PrefsStoreImpl
 import com.example.audiorecordapp.base.utils.Animator
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_READ_EXTERNAL_STORAGE_DOWNLOAD
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_RECORD_AUDIO
@@ -34,13 +34,13 @@ import com.example.audiorecordapp.base.utils.ViewVisibility
 import com.example.audiorecordapp.base.viewmodel.ActivityViewModel
 import com.example.audiorecordapp.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.HiltAndroidApp
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
+
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpdateListener {
     private lateinit var binding: ActivityMainBinding
@@ -78,17 +78,24 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
 
     private var recording = false
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         appSpecificExternalDir = File("${externalCacheDir?.absolutePath}${File.separator}/")
+        getAudioTime()
         onClickListener()
         permissionViews()
         initRecyclerView()
-
+        binding.lifecycleOwner = this
 //        setUpRecycler()
     }
 
+    private fun getAudioTime(){
+        lifecycleScope.launchWhenCreated {
+            activityViewModel.getAudioTime()
+        }
+    }
 
     //TODO handle a folder where files are created and we can add files upon recording and finishing record
     private fun initMedia() {
@@ -142,7 +149,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                             null,
                             currentFile.name,
                             currentFile.path.toString(),
-                            activityViewModel.getAudioTime().toString(),
+                            activityViewModel.audioTime.value.toString(),
                             isPlaying = false,
                             isStopped = true
                         )

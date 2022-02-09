@@ -24,7 +24,7 @@ class ActivityViewModel @Inject constructor(private val prefsStoreImpl: PrefsSto
         }
     }
 
-    fun getAudioTime() {
+    fun getAudioTime()  {
         viewModelScope.launch(Dispatchers.IO) {
             prefsStoreImpl.getAudioTime().collect {
                 audioTime.postValue(it)
