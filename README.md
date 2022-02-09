@@ -19,10 +19,13 @@ such as Timer for the audio record time and Animation used for the button.
 
 ## Future Enhancments:
 I will add an API in order to upload the saved files locally to a cloud or online storage, moreover try implement
-Audio Recorder framework instead of Media Recorder, because it can provide me with some spooky customization's
+Audio Recorder framework instead of Media Recorder, because it can provide me with some spooky customization's for 
+a better quality sound.
 
 ## Video
 Here is a small video demontstrating my mini app.
+
+https://user-images.githubusercontent.com/57522137/153200997-3e2b2c14-e25d-47dd-a262-8bf33107c631.mp4
 
 
 
