@@ -2,6 +2,7 @@ package com.example.audiorecordapp.base.utils
 
 import java.util.*
 import java.util.Timer
+
 class Timer(private var listener: OnTimerUpdateListener) {
 
     interface OnTimerUpdateListener {

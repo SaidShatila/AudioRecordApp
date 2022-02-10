@@ -10,6 +10,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -21,7 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.audiorecordapp.R
 import com.example.audiorecordapp.base.adapters.AudioRecordAdapter
 import com.example.audiorecordapp.base.models.local.models.AudioRecordObject
-import com.example.audiorecordapp.base.models.local.prefstore.PrefsStoreImpl
+import com.example.audiorecordapp.base.models.local.models.AudioRecordTimeObject
 import com.example.audiorecordapp.base.utils.Animator
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_READ_EXTERNAL_STORAGE_DOWNLOAD
 import com.example.audiorecordapp.base.utils.ConstantsUtils.REQ_CODE_RECORD_AUDIO
@@ -34,12 +35,10 @@ import com.example.audiorecordapp.base.utils.ViewVisibility
 import com.example.audiorecordapp.base.viewmodel.ActivityViewModel
 import com.example.audiorecordapp.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.IOException
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpdateListener {
@@ -75,8 +74,10 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
 
     private lateinit var timer: Timer
     private lateinit var handler: Handler
+    private var refreshRate: Long = 30
 
     private var recording = false
+    private var hasInitializedAdapter = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,14 +87,15 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
         getAudioTime()
         onClickListener()
         permissionViews()
-        initRecyclerView()
+        setupObservers()
+        handler = Handler(Looper.myLooper()!!)
         binding.lifecycleOwner = this
-//        setUpRecycler()
     }
 
-    private fun getAudioTime(){
-        lifecycleScope.launchWhenCreated {
+    private fun getAudioTime() {
+        runBlocking {
             activityViewModel.getAudioTime()
+
         }
     }
 
@@ -144,12 +146,19 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
         if (listAllFiles != null && listAllFiles.isNotEmpty()) {
             for (currentFile in listAllFiles) {
                 lifecycleScope.launch {
+                    val audioTimeNameList = activityViewModel.audioRecordTimeObjectList
+                    var audioTime = ""
+                    for (item in audioTimeNameList) {
+                        if (item.fileName == currentFile.name)
+                            audioTime = item.audioTime
+                    }
+
                     audioList.add(
                         AudioRecordObject(
                             null,
                             currentFile.name,
                             currentFile.path.toString(),
-                            activityViewModel.audioTime.value.toString(),
+                            audioTime,
                             isPlaying = false,
                             isStopped = true
                         )
@@ -158,6 +167,12 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
             }
         }
         return audioList
+    }
+
+    private fun setupObservers() {
+        activityViewModel.audioTime.observe(this) {
+            initRecyclerView()
+        }
     }
 
     private fun onClickListener() {
@@ -179,6 +194,13 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
 
     private fun setUpRecycler(audioRecordObjectList: ArrayList<AudioRecordObject>) {
         ViewVisibility.viewShow(binding.rvAudioList)
+        initializeAudioRecordAdapter()
+        audioRecordAdapter.notifyDataSetChanged()
+        binding.rvAudioList.adapter = audioRecordAdapter
+        audioRecordAdapter.setAudioList(audioRecordObjectList)
+    }
+
+    private fun initializeAudioRecordAdapter() {
         audioRecordAdapter = AudioRecordAdapter({ adapter ->
             audioRecordAdapter.getAudioRecord()[adapter].isPlaying =
                 !audioRecordAdapter.getAudioRecord()[adapter].isPlaying
@@ -202,9 +224,6 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
             fileDelete.delete()
             Log.d("MainActivityThis", "recording Deleted ${fileDelete.absolutePath}")
         })
-        audioRecordAdapter.notifyDataSetChanged()
-        binding.rvAudioList.adapter = audioRecordAdapter
-        audioRecordAdapter.setAudioList(audioRecordObjectList)
     }
 
     override fun onRequestPermissionsResult(
@@ -482,7 +501,12 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                     isStopped = true
                 )
                 lifecycleScope.launch {
-                    activityViewModel.saveAudioTime(timer.format())
+                    activityViewModel.saveAudioTime(
+                        AudioRecordTimeObject(
+                            fileNameMedia,
+                            timer.format()
+                        )
+                    )
                 }
                 Log.d("MainActivityThis", "recording Saved ${newFile.absolutePath}")
                 if (getAudioLists(appSpecificExternalDir).size <= 1) {
@@ -562,27 +586,28 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
     }
 
     override fun onTimerUpdate(duration: String) {
-        GlobalScope.launch(Dispatchers.IO) {
-            launch(Dispatchers.Main) {
-                if (recording)
-                    with(binding) {
-                        tvTimer.text = duration
-                        progressBar.progress = timer.getDuration().toInt() / 300
-                    }
+        runOnUiThread {
+            if (recording)
+                with(binding) {
+                    handler.postDelayed(
+                        Runnable {
+                            tvTimer.text = duration
+                            progressBar.progress = timer.getDuration().toInt() / 300
+                        }, refreshRate
+                    )
+                }
 
-                if (duration == "05:00") {
-                    try {
-                        stopRecording(binding.btRecord.id, null)
-                        showSaveDialog(fileNameMedia)
-                        isRecordingMedia = false
-                    } catch (e: Exception) {
-                        Log.e("MainActivityThis", "onManyClicks $e")
-                        mediaRecorder = null
-                    }
+            if (duration == "05:00") {
+                try {
+                    stopRecording(binding.btRecord.id, null)
+                    showSaveDialog(fileNameMedia)
+                    isRecordingMedia = false
+                } catch (e: Exception) {
+                    Log.e("MainActivityThis", "onManyClicks $e")
+                    mediaRecorder = null
                 }
             }
         }
 
     }
-
 }

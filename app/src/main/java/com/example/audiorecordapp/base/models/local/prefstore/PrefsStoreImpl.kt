@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -38,7 +37,7 @@ class PrefsStoreImpl@Inject constructor(
         } else {
             throw exception
         }
-    }.map { it[PreferencesKeys.AUDIO_TIME] ?: "00:00" }
+    }.map { it[PreferencesKeys.AUDIO_TIME] ?: " " }
 
     override suspend fun setAudioTime(audioTimeList: String) {
         dataStore.edit {
