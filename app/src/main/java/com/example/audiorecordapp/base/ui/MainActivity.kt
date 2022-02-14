@@ -146,11 +146,11 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
         if (listAllFiles != null && listAllFiles.isNotEmpty()) {
             for (currentFile in listAllFiles) {
                 lifecycleScope.launch {
-                    val audioTimeNameList = activityViewModel.audioRecordTimeObjectList
+                    val audioTimeNameList = activityViewModel.audioRecordListLiveData.value
                     var audioTime = ""
-                    for (item in audioTimeNameList) {
-                        if (item.fileName == currentFile.name)
-                            audioTime = item.audioTime
+                    audioTimeNameList?.audioRecordTimeObject?.forEach {
+                        if (it.fileName == currentFile.name)
+                            audioTime = it.audioTime
                     }
 
                     audioList.add(
@@ -166,6 +166,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 }
             }
         }
+
         return audioList
     }
 
@@ -503,7 +504,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 lifecycleScope.launch {
                     activityViewModel.saveAudioTime(
                         AudioRecordTimeObject(
-                            fileNameMedia,
+                            "$it.m4a",
                             timer.format()
                         )
                     )

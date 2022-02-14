@@ -19,8 +19,9 @@ class ActivityViewModel @Inject constructor(private val prefsStoreImpl: PrefsSto
     var audioTime: MutableLiveData<String> = MutableLiveData("")
 
     var audioRecordTimeObjectList: ArrayList<AudioRecordTimeObject> = arrayListOf()
-    private var audioRecordListLiveData: MutableLiveData<AudioRecordList> =
+     var audioRecordListLiveData: MutableLiveData<AudioRecordList> =
         MutableLiveData(AudioRecordList(arrayListOf()))
+
 
     fun saveAudioTime(audioRecordTimeObject: AudioRecordTimeObject) {
         viewModelScope.launch(Dispatchers.IO) {
