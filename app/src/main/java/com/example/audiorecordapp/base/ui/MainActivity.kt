@@ -77,7 +77,6 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
     private var refreshRate: Long = 30
 
     private var recording = false
-    private var hasInitializedAdapter = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
