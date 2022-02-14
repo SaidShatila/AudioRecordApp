@@ -16,7 +16,6 @@ import javax.inject.Inject
 @HiltViewModel
 class ActivityViewModel @Inject constructor(private val prefsStoreImpl: PrefsStoreImpl) :
     ViewModel() {
-    var audioTime: MutableLiveData<String> = MutableLiveData("")
 
     var audioRecordTimeObjectList: ArrayList<AudioRecordTimeObject> = arrayListOf()
      var audioRecordListLiveData: MutableLiveData<AudioRecordList> =

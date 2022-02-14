@@ -147,6 +147,9 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
             for (currentFile in listAllFiles) {
                 lifecycleScope.launch {
                     val audioTimeNameList = activityViewModel.audioRecordListLiveData.value
+                    Log.d(
+                        "AudioRecordList",
+                        activityViewModel.audioRecordListLiveData.value?.audioRecordTimeObject?.toArray().contentToString())
                     var audioTime = ""
                     audioTimeNameList?.audioRecordTimeObject?.forEach {
                         if (it.fileName == currentFile.name)
@@ -171,7 +174,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
     }
 
     private fun setupObservers() {
-        activityViewModel.audioTime.observe(this) {
+        activityViewModel.audioRecordListLiveData.observe(this) {
             initRecyclerView()
         }
     }
