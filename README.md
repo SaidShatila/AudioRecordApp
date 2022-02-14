@@ -5,6 +5,7 @@
 #### Used ViewModels, Hilt, Preference DataStore.
 #### Used Media Record to record the audio of the user.
 #### Used Media Player to play the saved voice notes.
+#### Used DataStore to save the time of the Audio, Attention !! ( Just for the current moment )
 #### Kotlin-coroutines were used in order to fetch the saved Data.
 
 ## Architecture:
