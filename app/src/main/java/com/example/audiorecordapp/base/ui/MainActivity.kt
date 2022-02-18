@@ -411,10 +411,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 ).show()
                 Log.e("MainActivityThis", "illegal argument given $e")
             }
-            with(binding) {
-                progressBar.progress = 0
-                tvTimer.text = "00:00"
-            }
+            resetViews()
         }
     }
 
@@ -522,13 +519,13 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
             ) {
                 val fileDelete = File("$dirPathMain$fileNameMedia")
                 fileDelete.delete()
-                cancelDialogRecord()
+                resetViews()
                 Log.d("MainActivityThis", "recording Deleted ${fileDelete.absolutePath}")
             }.show(supportFragmentManager, "")
         }
     }
 
-    private fun cancelDialogRecord() {
+    private fun resetViews() {
         with(binding) {
             progressBar.progress = 0
             tvTimer.text = "00:00"
