@@ -522,8 +522,16 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
             ) {
                 val fileDelete = File("$dirPathMain$fileNameMedia")
                 fileDelete.delete()
+                cancelDialogRecord()
                 Log.d("MainActivityThis", "recording Deleted ${fileDelete.absolutePath}")
             }.show(supportFragmentManager, "")
+        }
+    }
+
+    private fun cancelDialogRecord() {
+        with(binding) {
+            progressBar.progress = 0
+            tvTimer.text = "00:00"
         }
     }
 
