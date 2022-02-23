@@ -77,6 +77,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
     private var refreshRate: Long = 30
 
     private var recording = false
+    private var onLaunch = true
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,10 +94,17 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
 
     private fun getAudioTime() {
         runBlocking {
-            activityViewModel.getAudioTime()
-
+            activityViewModel.getAudioTime(onLaunch)
         }
     }
+
+    override fun onStop() {
+        super.onStop()
+        runBlocking {
+            activityViewModel.setTAudioTimes()
+        }
+    }
+
 
     //TODO handle a folder where files are created and we can add files upon recording and finishing record
     private fun initMedia() {
@@ -302,11 +310,13 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun stopRecording(btRecord: Int?, btCancel: Int?) {
         if (btRecord == binding.btRecord.id || btCancel == binding.btCancel.id) {
             if (mediaRecorder != null) {
                 try {
                     timer.stop()
+                    resetViews()
                     recording = false
                 } catch (e: java.lang.Exception) {
                     Log.d("MainActivityThis", "Timer Error")
@@ -316,10 +326,6 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 mediaRecorder?.release()
                 Log.d("MainActivityThis", "recording Stopped")
                 mediaRecorder = null
-                with(binding) {
-                    progressBar.progress = 0
-                    tvTimer.text = "00:00"
-                }
             }
         }
     }
@@ -394,6 +400,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 try {
                     timer.stop()
                     recording = false
+                    resetViews()
                 } catch (e: java.lang.Exception) {
                     Log.d("MainActivityThis", "Timer Error")
                 }
@@ -411,7 +418,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                 ).show()
                 Log.e("MainActivityThis", "illegal argument given $e")
             }
-            resetViews()
+
         }
     }
 
@@ -501,6 +508,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener, Timer.OnTimerUpd
                     isStopped = true
                 )
                 lifecycleScope.launch {
+                    onLaunch = false
                     activityViewModel.saveAudioTime(
                         AudioRecordTimeObject(
                             "$it.m4a",

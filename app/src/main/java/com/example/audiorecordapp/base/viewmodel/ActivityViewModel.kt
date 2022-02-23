@@ -23,7 +23,9 @@ class ActivityViewModel @Inject constructor(private val prefsStoreImpl: PrefsSto
 
 
     fun saveAudioTime(audioRecordTimeObject: AudioRecordTimeObject) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(
+            Dispatchers.Main
+        ) {
             audioRecordTimeObjectList.add(audioRecordTimeObject)
             val serializedResult = Gson().toJson(
                 AudioRecordList(
@@ -36,12 +38,40 @@ class ActivityViewModel @Inject constructor(private val prefsStoreImpl: PrefsSto
         }
     }
 
-    fun getAudioTime() {
-        viewModelScope.launch(Dispatchers.IO) {
-            prefsStoreImpl.getAudioTime().collect {
+    fun getAudioTime(onLaunch: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            prefsStoreImpl.getAudioTime().collect { it ->
                 val audioRecordList = Gson().fromJson(it, AudioRecordList::class.java)
-                audioRecordListLiveData.postValue(audioRecordList)
+                if (audioRecordListLiveData.value != null && onLaunch) {
+                    val tempList: ArrayList<AudioRecordTimeObject> = arrayListOf()
+                    audioRecordListLiveData.value
+                        ?.audioRecordTimeObject?.forEach { content ->
+                            tempList.add(content)
+                        }
+                    audioRecordList.audioRecordTimeObject.forEach { content ->
+                        tempList.add(content)
+                    }
+                    tempList.sortBy {
+                        it.audioTime.length
+                    }
+                    val audioRecordListNew = AudioRecordList(tempList)
+                    audioRecordListLiveData.postValue(audioRecordListNew)
+                } else audioRecordListLiveData.postValue(audioRecordList)
             }
+        }
+    }
+
+
+    fun setTAudioTimes(){
+        viewModelScope.launch(Dispatchers.Main) {
+            val serializedObject =  Gson().toJson(
+                audioRecordListLiveData.value?.audioRecordTimeObject?.let {
+                    AudioRecordList(
+                        it
+                    )
+                }
+            )
+            prefsStoreImpl.setAudioTime(serializedObject)
         }
     }
 }

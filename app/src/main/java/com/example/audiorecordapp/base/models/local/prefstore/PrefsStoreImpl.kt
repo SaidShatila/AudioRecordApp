@@ -44,4 +44,5 @@ class PrefsStoreImpl@Inject constructor(
             it[PreferencesKeys.AUDIO_TIME] = audioTimeList
         }
     }
+
 }
